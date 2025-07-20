@@ -1,6 +1,5 @@
 name: macOS Dropbear SSH via FRP with remote port 15900
 on:
-  push:
   workflow_dispatch:
 jobs:
   macos-dropbear:
