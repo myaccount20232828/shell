@@ -1,4 +1,4 @@
-name: Enable Apple VNC with user restriction (runner & root) and FRP tunnel
+name: Enable Apple VNC without password and FRP tunnel
 
 on:
   push:
@@ -13,12 +13,11 @@ jobs:
       - name: Install frpc
         run: brew install frpc
 
-      - name: Enable Apple Remote Management with VNC password and user access
+      - name: Enable Apple Remote Management with legacy VNC but no password, all users allowed
         run: |
           sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
-            -activate -configure -access -on -privs -all -users runner,root \
+            -activate -configure -access -on -privs -all -users "" \
             -clientopts -setvnclegacy -vnclegacy yes \
-            -clientopts -setvncpw -vncpw vncpass \
             -restart -agent
 
       - name: Create frpc.ini
