@@ -20,19 +20,23 @@ jobs:
           brew update
           brew install frpc
 
-      - name: Create frpc.ini config
+      - name: Create frpc.ini config safely
         run: |
-          cat > frpc.ini <<EOF
-[common]
-server_addr = ${{ secrets.IP }}
-server_port = 1234
+          echo "[common]" > frpc.ini
+          echo "server_addr = ${{ secrets.IP }}" >> frpc.ini
+          echo "server_port = 1234" >> frpc.ini
+          echo "" >> frpc.ini
+          echo "[http-demo]" >> frpc.ini
+          echo "type = tcp" >> frpc.ini
+          echo "local_ip = 127.0.0.1" >> frpc.ini
+          echo "local_port = 8000" >> frpc.ini
+          echo "remote_port = 9000" >> frpc.ini
 
-[http-demo]
-type = tcp
-local_ip = 127.0.0.1
-local_port = 8000
-remote_port = 9000
-EOF
+      - name: Print frpc.ini content
+        run: |
+          echo "===== frpc.ini ====="
+          cat frpc.ini
+          echo "===================="
 
       - name: Run frpc client
         run: |
