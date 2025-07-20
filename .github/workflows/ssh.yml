@@ -1,4 +1,4 @@
-name: Run dropbear SSH with frp
+name: SSH Tunnel with Dropbear and frpc
 
 on:
   push:
@@ -8,39 +8,38 @@ jobs:
   ssh-tunnel:
     runs-on: macos-latest
     steps:
-      - name: Install dropbear and frp
+      - name: Install dropbear and frpc
         run: |
           brew install dropbear frpc
 
       - name: Generate dropbear host keys
         run: |
-          mkdir -p /usr/local/etc/dropbear
-          dropbearkey -t rsa -f /usr/local/etc/dropbear/dropbear_rsa_host_key
-          dropbearkey -t dss -f /usr/local/etc/dropbear/dropbear_dss_host_key
-          dropbearkey -t ecdsa -f /usr/local/etc/dropbear/dropbear_ecdsa_host_key
-          dropbearkey -t ed25519 -f /usr/local/etc/dropbear/dropbear_ed25519_host_key
+          sudo mkdir -p /etc/dropbear
+          sudo dropbearkey -t rsa -f /etc/dropbear/dropbear_rsa_host_key
+          sudo dropbearkey -t dss -f /etc/dropbear/dropbear_dss_host_key
+          sudo dropbearkey -t ecdsa -f /etc/dropbear/dropbear_ecdsa_host_key
+          sudo dropbearkey -t ed25519 -f /etc/dropbear/dropbear_ed25519_host_key
 
       - name: Start dropbear SSH server
         run: |
-          dropbear -p 2222 -r /usr/local/etc/dropbear/dropbear_rsa_host_key -d /usr/local/etc/dropbear/dropbear_dss_host_key -c /usr/local/etc/dropbear/dropbear_ecdsa_host_key -y /usr/local/etc/dropbear/dropbear_ed25519_host_key -E -F &
+          sudo dropbear -p 2222 \
+            -r /etc/dropbear/dropbear_rsa_host_key \
+            -d /etc/dropbear/dropbear_dss_host_key \
+            -c /etc/dropbear/dropbear_ecdsa_host_key \
+            -y /etc/dropbear/dropbear_ed25519_host_key \
+            -E -F &
           sleep 5
-          lsof -iTCP:2222 -sTCP:LISTEN
+          echo "Dropbear processes:"
+          ps aux | grep dropbear
+          echo "Checking port 2222 listener:"
+          lsof -iTCP:2222 -sTCP:LISTEN || echo "Nothing listening on 2222"
 
-      - name: Create frpc.ini file
+      - name: Create frpc.ini config using echo
         run: |
-          cat > frpc.ini <<EOF
-          [common]
-          server_addr = ${{ secrets.IP }}
-          server_port = 1234
-
-          [ssh]
-          type = tcp
-          local_ip = 127.0.0.1
-          local_port = 2222
-          remote_port = 2222
-          EOF
+          echo "[common]\nserver_addr = ${{ secrets.IP }}\nserver_port = 1234\n\n[ssh]\ntype = tcp\nlocal_ip = 127.0.0.1\nlocal_port = 2222\nremote_port = 2222" > frpc.ini
+          echo "=== frpc.ini contents ==="
           cat frpc.ini
 
-      - name: Run frpc
+      - name: Start frpc client
         run: |
-          ./frpc -c frpc.ini
+          frpc -c frpc.ini
