@@ -1,7 +1,6 @@
 name: VNC with FRPC Tunnel
-
-on: [push]
-
+on:
+  workflow_dispatch:
 jobs:
   vnc-frp:
     runs-on: ubuntu-latest
