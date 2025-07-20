@@ -10,7 +10,7 @@ jobs:
     steps:
       - name: Install dropbear and frp
         run: |
-          brew install dropbear frp
+          brew install dropbear frpc
 
       - name: Generate dropbear host keys
         run: |
