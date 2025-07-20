@@ -1,4 +1,4 @@
-name: VNC with FRPC Tunnel and XFCE
+name: VNC with FRPC Tunnel
 
 on: [push]
 
@@ -10,10 +10,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install desktop and VNC
+      - name: Download and install FRPC first
+        run: |
+          wget https://github.com/fatedier/frp/releases/download/v0.63.0/frp_0.63.0_linux_amd64.tar.gz
+          tar -xzf frp_0.63.0_linux_amd64.tar.gz
+          sudo mv frp_0.63.0_linux_amd64/frpc /usr/local/bin/
+          chmod +x /usr/local/bin/frpc
+          frpc --version  # Confirm it's installed
+
+      - name: Install Desktop and VNC
         run: |
           sudo apt update
-          sudo apt install -y xfce4 xfce4-goodies tigervnc-standalone-server wget
+          sudo apt install -y xfce4 xfce4-goodies tigervnc-standalone-server
 
       - name: Set VNC password
         run: |
@@ -21,29 +29,11 @@ jobs:
           echo "password" | vncpasswd -f > ~/.vnc/passwd
           chmod 600 ~/.vnc/passwd
 
-      - name: Setup VNC xstartup script
-        run: |
-          mkdir -p ~/.vnc
-          cat > ~/.vnc/xstartup <<EOF
-          #!/bin/sh
-          xrdb \$HOME/.Xresources
-          startxfce4 &
-          EOF
-          chmod +x ~/.vnc/xstartup
-
       - name: Start VNC server
         run: |
           vncserver :1 -geometry 1280x800 -depth 24
 
-      - name: Download and install FRPC
-        run: |
-          wget https://github.com/fatedier/frp/releases/download/v0.63.0/frp_0.63.0_linux_amd64.tar.gz
-          tar -xzf frp_0.63.0_linux_amd64.tar.gz
-          sudo mv frp_0.63.0_linux_amd64/frpc /usr/local/bin/
-          chmod +x /usr/local/bin/frpc
-          frpc --version
-
-      - name: Create frpc.ini config
+      - name: Create frpc.ini
         run: |
           cat > frpc.ini <<EOF
           [common]
@@ -60,7 +50,7 @@ jobs:
       - name: Show frpc.ini (debug)
         run: cat frpc.ini
 
-      - name: Start frpc and block
+      - name: Start frpc and block forever
         run: |
-          echo "VNC is exposed via FRP at ${{ secrets.IP }}:15900"
+          echo "VNC is now exposed via FRP at ${{ secrets.IP }}:15900"
           frpc -c frpc.ini
