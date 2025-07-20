@@ -1,0 +1,45 @@
+name: Reverse VNC Tunnel with TigerVNC
+
+on:
+  workflow_dispatch:
+
+jobs:
+  tunnel:
+    runs-on: macos-latest
+    steps:
+      - name: Install TigerVNC
+        run: |
+          brew update
+          brew install tigervnc
+
+      - name: Start VNC server on :1 (port 5901)
+        run: |
+          # Set VNC password (here: 'vncpass')
+          mkdir -p ~/.vnc
+          echo "vncpass" | vncpasswd -f > ~/.vnc/passwd
+          chmod 600 ~/.vnc/passwd
+
+          # Start VNC server in background with geometry and depth
+          vncserver :1 -geometry 1280x800 -depth 24
+
+      - name: Install frpc via Homebrew
+        run: |
+          brew install frpc
+
+      - name: Create frpc.ini config safely
+        run: |
+          echo "[common]" > frpc.ini
+          echo "server_addr = ${{ secrets.IP }}" >> frpc.ini
+          echo "server_port = 1234" >> frpc.ini
+          echo "" >> frpc.ini
+          echo "[vnc]" >> frpc.ini
+          echo "type = tcp" >> frpc.ini
+          echo "local_ip = 127.0.0.1" >> frpc.ini
+          echo "local_port = 5901" >> frpc.ini
+          echo "remote_port = 5901" >> frpc.ini
+
+      - name: Print frpc.ini content
+        run: cat frpc.ini
+
+      - name: Run frpc client
+        run: frpc -c frpc.ini
