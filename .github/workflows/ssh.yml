@@ -1,53 +1,32 @@
-name: Dropbear SSH Tunnel on macOS
+name: Run dropbear SSH with frp
 
 on:
   push:
-    branches: [ main ]
   workflow_dispatch:
 
 jobs:
   ssh-tunnel:
     runs-on: macos-latest
     steps:
-      - name: Install dropbear and frpc via Homebrew
+      - name: Install dropbear and frp
         run: |
-          brew update
-          brew install dropbear frpc
-          dropbear -h
-          frpc --version
+          brew install dropbear frp
 
-      - name: Generate dropbear host keys if missing
+      - name: Generate dropbear host keys
         run: |
-          if [ ! -f /usr/local/etc/dropbear/dropbear_rsa_host_key ]; then
-            echo "Generating dropbear RSA host key..."
-            dropbearkey -t rsa -f /usr/local/etc/dropbear/dropbear_rsa_host_key
-          fi
-          if [ ! -f /usr/local/etc/dropbear/dropbear_ed25519_host_key ]; then
-            echo "Generating dropbear ED25519 host key..."
-            dropbearkey -t ed25519 -f /usr/local/etc/dropbear/dropbear_ed25519_host_key
-          fi
+          mkdir -p /usr/local/etc/dropbear
+          dropbearkey -t rsa -f /usr/local/etc/dropbear/dropbear_rsa_host_key
+          dropbearkey -t dss -f /usr/local/etc/dropbear/dropbear_dss_host_key
+          dropbearkey -t ecdsa -f /usr/local/etc/dropbear/dropbear_ecdsa_host_key
+          dropbearkey -t ed25519 -f /usr/local/etc/dropbear/dropbear_ed25519_host_key
 
-      - name: Start dropbear on port 2222
+      - name: Start dropbear SSH server
         run: |
-          echo "Starting dropbear on port 2222..."
-          # Kill any existing dropbear to avoid conflicts
-          pkill dropbear || true
-
-          # Start dropbear in background with logs
-          nohup dropbear -p 2222 -r /usr/local/etc/dropbear/dropbear_rsa_host_key -r /usr/local/etc/dropbear/dropbear_ed25519_host_key > dropbear.log 2>&1 &
-
+          dropbear -p 2222 -r /usr/local/etc/dropbear/dropbear_rsa_host_key -d /usr/local/etc/dropbear/dropbear_dss_host_key -c /usr/local/etc/dropbear/dropbear_ecdsa_host_key -y /usr/local/etc/dropbear/dropbear_ed25519_host_key -E -F &
           sleep 5
+          lsof -iTCP:2222 -sTCP:LISTEN
 
-          echo "Dropbear processes:"
-          ps aux | grep dropbear | grep -v grep
-
-          echo "Check port 2222 listening:"
-          lsof -iTCP:2222 -sTCP:LISTEN || echo "Nothing listening on 2222"
-
-          echo "Dropbear log tail:"
-          tail -20 dropbear.log
-
-      - name: Create frpc config file
+      - name: Create frpc.ini file
         run: |
           cat > frpc.ini <<EOF
           [common]
@@ -60,20 +39,8 @@ jobs:
           local_port = 2222
           remote_port = 2222
           EOF
-
-          echo "frpc.ini content:"
           cat frpc.ini
 
-      - name: Start frpc client
+      - name: Run frpc
         run: |
-          pkill frpc || true
-          frpc -c frpc.ini &
-          sleep 5
-          echo "frpc processes:"
-          ps aux | grep frpc
-
-      - name: s
-        run: |
-          netstat -anv | grep LISTEN
-          echo "--- Dropbear log tail ---"
-          tail -20 dropbear.log
+          ./frpc -c frpc.ini
