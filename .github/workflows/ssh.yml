@@ -1,9 +1,8 @@
 name: Setup Dropbear SSH with FRP reverse tunnel on macOS runner
 
 on:
+  workflow_dispatch:
   push:
-    branches:
-      - main
 
 jobs:
   dropbear-ssh:
