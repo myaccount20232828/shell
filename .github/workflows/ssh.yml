@@ -15,19 +15,10 @@ jobs:
           brew install frpc
           brew install dropbear
 
-      - name: Disable Spotlight indexing
-        run: sudo mdutil -i off -a
-
-      - name: Create dropbear user and home
+      - name: Create dropbear user with password alpine
         run: |
-          sudo dscl . -create /Users/dropbearuser
-          sudo dscl . -create /Users/dropbearuser UserShell /bin/bash
-          sudo dscl . -create /Users/dropbearuser RealName "Dropbear User"
-          sudo dscl . -create /Users/dropbearuser UniqueID 1002
-          sudo dscl . -create /Users/dropbearuser PrimaryGroupID 80
-          sudo dscl . -create /Users/dropbearuser NFSHomeDirectory /Users/dropbearuser
-          sudo dscl . -passwd /Users/dropbearuser dropbearpass
-          sudo createhomedir -c -u dropbearuser > /dev/null
+          sudo sysadminctl -addUser dropbearuser -fullName "Dropbear User" -password alpine
+          sudo createhomedir -c -u dropbearuser
 
       - name: Generate dropbear RSA host key (if not exists)
         run: |
