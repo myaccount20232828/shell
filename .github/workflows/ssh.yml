@@ -15,48 +15,27 @@ jobs:
           brew install frpc
           brew install dropbear
 
-      - name: Create dropbear user with password alpine
+      - name: Create dropbear user with password 'alpine'
         run: |
           sudo sysadminctl -addUser dropbearuser -fullName "Dropbear User" -password alpine
           sudo createhomedir -c -u dropbearuser
           sudo dscl . -create /Users/dropbearuser UserShell /bin/bash
 
-      - name: Generate Dropbear host keys
+      - name: Generate Dropbear host key (RSA only)
         run: |
           sudo mkdir -p /etc/dropbear
-          if [ ! -f /etc/dropbear/dropbear_rsa_host_key ]; then
-            sudo dropbearkey -t rsa -f /etc/dropbear/dropbear_rsa_host_key
-          fi
-          if [ ! -f /etc/dropbear/dropbear_ecdsa_host_key ]; then
-            sudo dropbearkey -t ecdsa -f /etc/dropbear/dropbear_ecdsa_host_key
-          fi
-          if [ ! -f /etc/dropbear/dropbear_ed25519_host_key ]; then
-            sudo dropbearkey -t ed25519 -f /etc/dropbear/dropbear_ed25519_host_key
-          fi
-          sudo chmod 600 /etc/dropbear/*_host_key
+          sudo dropbearkey -t rsa -f /etc/dropbear/dropbear_rsa_host_key
+          sudo chmod 600 /etc/dropbear/dropbear_rsa_host_key
 
-      - name: Prepare dropbearuser authorized_keys for public key auth
-        run: |
-          sudo mkdir -p /Users/dropbearuser/.ssh
-          sudo chmod 700 /Users/dropbearuser/.ssh
-          sudo touch /Users/dropbearuser/.ssh/authorized_keys
-          sudo chmod 600 /Users/dropbearuser/.ssh/authorized_keys
-          sudo chown -R dropbearuser:staff /Users/dropbearuser/.ssh
-          # (Optional) Insert your public key here if you want passwordless login
-          # echo "ssh-rsa AAAA...your public key..." | sudo tee -a /Users/dropbearuser/.ssh/authorized_keys
-
-      - name: Start dropbear server on port 2222
+      - name: Start Dropbear on port 2222 with password auth only
         run: |
           sudo pkill dropbear || true
-          sudo dropbear -E -F \
-            -p 2222 \
-            -r /etc/dropbear/dropbear_rsa_host_key \
-            -r /etc/dropbear/dropbear_ecdsa_host_key \
-            -r /etc/dropbear/dropbear_ed25519_host_key &
+          # Do not create .ssh/authorized_keys so password auth is used
+          sudo dropbear -E -F -p 2222 -r /etc/dropbear/dropbear_rsa_host_key &
 
           sleep 5
 
-      - name: Create frpc.ini for port forwarding
+      - name: Create frpc.ini
         run: |
           cat > frpc.ini <<EOF
           [common]
@@ -73,5 +52,5 @@ jobs:
       - name: Show frpc.ini
         run: cat frpc.ini
 
-      - name: Start frpc client
+      - name: Start frpc
         run: frpc -c frpc.ini
