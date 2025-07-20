@@ -11,9 +11,9 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - name: Install frpc and dropbear
+      - name: Install frpc, dropbear, and coreutils
         run: |
-          brew install frpc dropbear
+          brew install frpc dropbear coreutils
 
       - name: Verify dropbear installation
         run: |
@@ -38,21 +38,21 @@ jobs:
           echo "Created frpc.ini:"
           cat frpc.ini
 
-      - name: Attempt 1: Run dropbear in foreground to see errors (timeout 15s)
+      - name: Attempt 1
         run: |
-          timeout 15 dropbear -p 2222
+          gtimeout 15 dropbear -p 2222
         continue-on-error: true
 
       - name: Check if port 2222 is listening after attempt 1
         run: |
           lsof -iTCP:2222 -sTCP:LISTEN || echo "Nothing listening on 2222"
 
-      - name: Attempt 2: Run dropbear in background with logs
+      - name: Attempt
         run: |
           dropbear -p 2222 -E -F > dropbear.log 2>&1 &
           sleep 5
           echo "Dropbear processes:"
-          ps aux | grep dropbear
+          ps aux | grep dropbear || true
           echo "Port 2222 listening check:"
           lsof -iTCP:2222 -sTCP:LISTEN || echo "Nothing listening on 2222"
           echo "Dropbear logs:"
