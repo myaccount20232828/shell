@@ -1,4 +1,4 @@
-name: macOS Built-in VNC with frp Tunnel
+name: Enable Apple VNC + frp tunnel
 
 on:
   push:
@@ -6,10 +6,10 @@ on:
       - main
 
 jobs:
-  tunnel:
+  vnc-tunnel:
     runs-on: macos-latest
     steps:
-      - name: Enable macOS built-in VNC server with password
+      - name: Enable Apple VNC server with legacy password
         run: |
           sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
             -activate -configure -access -on \
@@ -17,22 +17,24 @@ jobs:
             -clientopts -setvncpw -vncpw vncpass \
             -restart -agent -privs -all
 
-      - name: Install frpc via Homebrew
+      - name: Install frpc
         run: brew install frpc
 
-      - name: Create frpc.ini config
+      - name: Create frpc.ini
         run: |
-          echo "[common]" > frpc.ini
-          echo "server_addr = ${{ secrets.IP }}" >> frpc.ini
-          echo "server_port = 1234" >> frpc.ini
-          echo "" >> frpc.ini
-          echo "[vnc]" >> frpc.ini
-          echo "type = tcp" >> frpc.ini
-          echo "local_ip = 127.0.0.1" >> frpc.ini
-          echo "local_port = 5900" >> frpc.ini
-          echo "remote_port = 5900" >> frpc.ini
+          cat > frpc.ini <<EOF
+          [common]
+          server_addr = ${{ secrets.IP }}
+          server_port = 1234
 
-      - name: Show frpc.ini content
+          [vnc]
+          type = tcp
+          local_ip = 127.0.0.1
+          local_port = 5900
+          remote_port = 5900
+          EOF
+
+      - name: Show frpc.ini
         run: cat frpc.ini
 
       - name: Run frpc client
