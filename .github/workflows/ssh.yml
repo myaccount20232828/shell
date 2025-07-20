@@ -35,5 +35,14 @@ jobs:
       - name: Start Dropbear SSH server and frpc client
         run: |
           nohup dropbear -p 2222 > dropbear.log 2>&1 &
-          sleep 3
+          for i in {1..10}; do
+            if lsof -iTCP:2222 -sTCP:LISTEN; then
+              echo "Dropbear is listening on port 2222"
+              break
+            else
+              echo "Waiting for dropbear to start..."
+              sleep 1
+            fi
+          done
+          cat dropbear.log
           frpc -c frpc.ini
