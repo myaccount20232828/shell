@@ -14,13 +14,24 @@ jobs:
 
       - name: Start VNC server on :1 (port 5901)
         run: |
-          mkdir -p ~/.vnc
-          echo "vncpass" | vncpasswd -f > ~/.vnc/passwd
+          VNC_PASSWD=$(which vncpasswd)
+          if [ -z "$VNC_PASSWD" ]; then
+            if [ -x "/opt/homebrew/bin/vncpasswd" ]; then
+              VNC_PASSWD="/opt/homebrew/bin/vncpasswd"
+            elif [ -x "/usr/local/bin/vncpasswd" ]; then
+              VNC_PASSWD="/usr/local/bin/vncpasswd"
+            else
+              echo "ERROR: vncpasswd not found"
+              exit 1
+            fi
+          fi
+          echo "vncpass" | $VNC_PASSWD -f > ~/.vnc/passwd
           chmod 600 ~/.vnc/passwd
           vncserver :1 -geometry 1280x800 -depth 24
 
       - name: Install frpc via Homebrew
-        run: brew install frpc
+        run: |
+          brew install frpc
 
       - name: Create frpc.ini config safely
         run: |
