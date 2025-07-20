@@ -22,9 +22,10 @@ jobs:
           sudo dscl . -create /Users/dropbearuser UserShell /bin/zsh
           sudo chown -R dropbearuser /Users/dropbearuser
           sudo passwd root <<EOF
-          ROOT_PASSWORD
-          ROOT_PASSWORD
+          alpine
+          alpine
           EOF
+          security set-keychain-password
 
       - name: Generate Dropbear host keys
         run: |
