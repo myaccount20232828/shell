@@ -1,7 +1,6 @@
 name: Shell
 on:
   workflow_dispatch:
-  push:
 jobs:
   Shell:
     runs-on: macos-latest
