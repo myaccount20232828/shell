@@ -1,4 +1,4 @@
-name: VNC with FRPC Tunnel (Full Ubuntu Desktop)
+name: VNC with FRPC Tunnel (Ubuntu 14-style UI)
 
 on: [push]
 
@@ -16,12 +16,12 @@ jobs:
           tar -xzf frp_0.63.0_linux_amd64.tar.gz
           sudo mv frp_0.63.0_linux_amd64/frpc /usr/local/bin/
           chmod +x /usr/local/bin/frpc
-          frpc --version
+          frpc --version  # Confirm it's installed
 
-      - name: Install Full Ubuntu Desktop + VNC
+      - name: Install GNOME Flashback and TigerVNC
         run: |
           sudo apt update
-          sudo apt install -y ubuntu-desktop tigervnc-standalone-server dbus-x11
+          sudo apt install -y gnome-session-flashback tigervnc-standalone-server dbus-x11
 
       - name: Set VNC password
         run: |
@@ -29,15 +29,15 @@ jobs:
           echo "password" | vncpasswd -f > ~/.vnc/passwd
           chmod 600 ~/.vnc/passwd
 
-      - name: Set up VNC xstartup for GNOME
+      - name: Create VNC xstartup script
         run: |
-          mkdir -p ~/.vnc
           cat > ~/.vnc/xstartup <<EOF
-          #!/bin/bash
+          #!/bin/sh
           export XDG_SESSION_TYPE=x11
-          export XDG_CURRENT_DESKTOP=ubuntu:GNOME
-          export GDMSESSION=ubuntu
-          gnome-session &
+          export XDG_SESSION_DESKTOP=gnome-flashback-metacity
+          export GNOME_SHELL_SESSION_MODE=classic
+          export DISPLAY=:1
+          gnome-session --session=gnome-flashback-metacity &
           EOF
           chmod +x ~/.vnc/xstartup
 
