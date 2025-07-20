@@ -25,7 +25,7 @@ jobs:
           alpine
           alpine
           EOF
-          security set-keychain-password
+          # security set-keychain-password
 
       - name: Generate Dropbear host keys
         run: |
