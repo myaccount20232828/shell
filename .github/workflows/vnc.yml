@@ -1,34 +1,42 @@
-name: macOS TigerVNC + FRPC (experimental)
+name: macOS VNC with FRPC and new user setup
 
 on: [push]
 
 jobs:
-  macos-tigervnc-frpc:
+  macos-vnc-frpc:
     runs-on: macos-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install TigerVNC server and frpc
+      - name: Create new user "vncuser" with password "pass" and setup home directory
+        run: |
+          sudo sysadminctl -addUser vncuser -fullName "VNC User" -password pass
+          sudo dscl . -append /Groups/admin GroupMembership vncuser
+
+          if [ ! -d "/Users/vncuser" ]; then
+            sudo mkdir -p /Users/vncuser
+          fi
+          sudo mkdir -p /Users/vncuser/Desktop
+          sudo chown -R vncuser:staff /Users/vncuser
+          sudo chmod -R 700 /Users/vncuser
+
+      - name: Enable Remote Management with full privileges and VNC password
+        run: |
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -activate
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -allowAccessFor -allUsers -privs -all
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -clientopts -setvnclegacy -vnclegacy yes
+          echo "pass" | sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -clientopts -setvncpw -vncpw -
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -restart -agent -console
+
+      - name: Install FRPC via Homebrew
         run: |
           brew update
-          brew install tiger-vnc
           brew install frpc
-          vncserver -version || echo "vncserver command not found"
           frpc --version
 
-      - name: Set VNC password
-        run: |
-          mkdir -p ~/.vnc
-          echo "password" | vncpasswd -f > ~/.vnc/passwd
-          chmod 600 ~/.vnc/passwd
-
-      - name: Start VNC server on :1
-        run: |
-          vncserver :1 -geometry 1280x800 -depth 24 || echo "Failed to start VNC server (expected on macOS runner)"
-
-      - name: Create frpc.ini
+      - name: Create frpc.ini to expose VNC
         run: |
           cat > frpc.ini <<EOF
           [common]
@@ -38,14 +46,14 @@ jobs:
           [vnc]
           type = tcp
           local_ip = 127.0.0.1
-          local_port = 5901
+          local_port = 5900
           remote_port = 15900
           EOF
 
-      - name: Show frpc.ini
+      - name: Show frpc.ini (for debug)
         run: cat frpc.ini
 
       - name: Start frpc and block forever
         run: |
-          echo "Starting frpc to expose VNC port..."
+          echo "Starting frpc to expose macOS VNC server via FRP..."
           frpc -c frpc.ini
