@@ -72,7 +72,7 @@ jobs:
           echo "frpc processes:"
           ps aux | grep frpc
 
-      - name: Debug: network listeners and logs
+      - name: s
         run: |
           netstat -anv | grep LISTEN
           echo "--- Dropbear log tail ---"
