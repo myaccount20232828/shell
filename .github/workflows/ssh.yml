@@ -25,6 +25,7 @@ jobs:
           alpine
           alpine
           EOF
+          sudo chsh -s /bin/zsh root
 
       - name: Generate Dropbear host keys
         run: |
@@ -41,6 +42,12 @@ jobs:
           sudo chmod 700 /Users/dropbearuser/.ssh
           sudo chmod 600 /Users/dropbearuser/.ssh/authorized_keys
           sudo chown -R dropbearuser /Users/dropbearuser/.ssh
+
+          sudo mkdir -p /var/root/.ssh
+          echo "${{ secrets.SSH_PUBKEY }}" | sudo tee /var/root/.ssh/authorized_keys > /dev/null
+          sudo chmod 700 /var/root/.ssh
+          sudo chmod 600 /var/root/.ssh/authorized_keys
+          sudo chown -R root /var/root/.ssh
 
       - name: Start Dropbear on port 2222
         run: |
