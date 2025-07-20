@@ -16,7 +16,6 @@ jobs:
         run: |
           sudo mkdir -p /etc/dropbear
           sudo dropbearkey -t rsa -f /etc/dropbear/dropbear_rsa_host_key
-          sudo dropbearkey -t dss -f /etc/dropbear/dropbear_dss_host_key
           sudo dropbearkey -t ecdsa -f /etc/dropbear/dropbear_ecdsa_host_key
           sudo dropbearkey -t ed25519 -f /etc/dropbear/dropbear_ed25519_host_key
 
@@ -24,7 +23,6 @@ jobs:
         run: |
           sudo dropbear -p 2222 \
             -r /etc/dropbear/dropbear_rsa_host_key \
-            -d /etc/dropbear/dropbear_dss_host_key \
             -c /etc/dropbear/dropbear_ecdsa_host_key \
             -y /etc/dropbear/dropbear_ed25519_host_key \
             -E -F &
