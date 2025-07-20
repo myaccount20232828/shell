@@ -30,7 +30,7 @@ jobs:
         run: |
           cat > frpc.ini <<EOF
           [common]
-          server_addr = YOUR_PUBLIC_IP
+          server_addr = ${{ secrets.IP }}
           server_port = 1234
 
           [vnc]
