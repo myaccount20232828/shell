@@ -1,4 +1,4 @@
-name: Enable Apple VNC without password and FRP tunnel
+name: macOS VNC with Dummy User and FRP
 
 on:
   push:
@@ -6,25 +6,31 @@ on:
       - main
 
 jobs:
-  vnc-tunnel:
+  macos-vnc:
     runs-on: macos-latest
 
     steps:
       - name: Install frpc
         run: brew install frpc
 
-      - name: Enable Apple Remote Management with legacy VNC but no password, all users allowed
+      - name: Create dummy macOS user for VNC
+        run: |
+          sudo sysadminctl -addUser vncuser -password vncpass -admin
+          sudo dscl . -create /Users/vncuser IsHidden 1
+
+      - name: Enable Apple Remote Management and set VNC password
         run: |
           sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
-            -activate -configure -access -on -privs -all -users "" \
+            -activate -configure -access -on -privs -all -users vncuser \
             -clientopts -setvnclegacy -vnclegacy yes \
+            -clientopts -setvncpw -vncpw vncpass \
             -restart -agent
 
       - name: Create frpc.ini
         run: |
           cat > frpc.ini <<EOF
           [common]
-          server_addr = ${{ secrets.IP }}
+          server_addr = YOUR_PUBLIC_IP
           server_port = 1234
 
           [vnc]
@@ -37,5 +43,5 @@ jobs:
       - name: Show frpc.ini
         run: cat frpc.ini
 
-      - name: Run frpc client
+      - name: Start frpc tunnel
         run: frpc -c frpc.ini
