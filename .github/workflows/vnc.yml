@@ -1,7 +1,9 @@
-name: Reverse VNC Tunnel with TigerVNC
+name: Reverse VNC Tunnel with TigerVNC (No Password)
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
   tunnel:
@@ -12,26 +14,12 @@ jobs:
           brew update
           brew install tiger-vnc
 
-      - name: Start VNC server on :1 (port 5901)
+      - name: Start VNC server on :1 (port 5901) without password
         run: |
-          VNC_PASSWD=$(which vncpasswd)
-          if [ -z "$VNC_PASSWD" ]; then
-            if [ -x "/opt/homebrew/bin/vncpasswd" ]; then
-              VNC_PASSWD="/opt/homebrew/bin/vncpasswd"
-            elif [ -x "/usr/local/bin/vncpasswd" ]; then
-              VNC_PASSWD="/usr/local/bin/vncpasswd"
-            else
-              echo "ERROR: vncpasswd not found"
-              exit 1
-            fi
-          fi
-          echo "vncpass" | $VNC_PASSWD -f > ~/.vnc/passwd
-          chmod 600 ~/.vnc/passwd
-          vncserver :1 -geometry 1280x800 -depth 24
+          vncserver :1 -geometry 1280x800 -depth 24 -SecurityTypes None
 
       - name: Install frpc via Homebrew
-        run: |
-          brew install frpc
+        run: brew install frpc
 
       - name: Create frpc.ini config safely
         run: |
