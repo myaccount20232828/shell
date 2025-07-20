@@ -1,4 +1,4 @@
-name: VNC with FRPC Tunnel (Ubuntu 14-style UI)
+name: VNC with FRPC Tunnel & Fallback DE
 
 on: [push]
 
@@ -10,18 +10,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Download and install FRPC
+      - name: Download and install FRPC first
         run: |
           wget https://github.com/fatedier/frp/releases/download/v0.63.0/frp_0.63.0_linux_amd64.tar.gz
           tar -xzf frp_0.63.0_linux_amd64.tar.gz
           sudo mv frp_0.63.0_linux_amd64/frpc /usr/local/bin/
           chmod +x /usr/local/bin/frpc
-          frpc --version  # Confirm it's installed
+          frpc --version
 
-      - name: Install GNOME Flashback and TigerVNC
+      - name: Install Desktop Environments and VNC dependencies
         run: |
           sudo apt update
-          sudo apt install -y gnome-session-flashback tigervnc-standalone-server dbus-x11
+          sudo apt install -y xfce4 xfce4-goodies tigervnc-standalone-server xterm twm dbus-x11
 
       - name: Set VNC password
         run: |
@@ -29,15 +29,42 @@ jobs:
           echo "password" | vncpasswd -f > ~/.vnc/passwd
           chmod 600 ~/.vnc/passwd
 
-      - name: Create VNC xstartup script
+      - name: Create fallback xstartup script
         run: |
-          cat > ~/.vnc/xstartup <<EOF
+          mkdir -p ~/.vnc
+          cat > ~/.vnc/xstartup <<'EOF'
           #!/bin/sh
-          export XDG_SESSION_TYPE=x11
-          export XDG_SESSION_DESKTOP=gnome-flashback-metacity
-          export GNOME_SHELL_SESSION_MODE=classic
-          export DISPLAY=:1
-          gnome-session --session=gnome-flashback-metacity &
+          export XKL_XMODMAP_DISABLE=1
+          unset SESSION_MANAGER
+          unset DBUS_SESSION_BUS_ADDRESS
+          dbus-launch --exit-with-session &
+
+          if command -v startxfce4 >/dev/null 2>&1; then
+            startxfce4 &
+            sleep 10
+            if pgrep -x "xfce4-session" >/dev/null; then
+              exit 0
+            fi
+          fi
+
+          if command -v xterm >/dev/null 2>&1; then
+            xterm &
+            sleep 10
+            if pgrep -x "xterm" >/dev/null; then
+              exit 0
+            fi
+          fi
+
+          if command -v twm >/dev/null 2>&1; then
+            twm &
+            sleep 10
+            if pgrep -x "twm" >/dev/null; then
+              exit 0
+            fi
+          fi
+
+          echo "No window manager could be started, exiting"
+          exit 1
           EOF
           chmod +x ~/.vnc/xstartup
 
