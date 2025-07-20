@@ -1,40 +1,36 @@
-name: macOS VNC via FRP with remote port 15900
+name: VNC with FRPC Tunnel
 
-on:
-  push:
-    branches:
-      - main
+on: [push]
 
 jobs:
-  macos-vnc:
-    runs-on: macos-latest
+  vnc-frpc:
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Install frpc
-        run: brew install frpc
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      - name: Disable Spotlight indexing
-        run: sudo mdutil -i off -a
-
-      - name: Create VNC user and home
+      - name: Install Desktop and VNC
         run: |
-          sudo dscl . -create /Users/vncuser
-          sudo dscl . -create /Users/vncuser UserShell /bin/bash
-          sudo dscl . -create /Users/vncuser RealName "VNC User"
-          sudo dscl . -create /Users/vncuser UniqueID 1001
-          sudo dscl . -create /Users/vncuser PrimaryGroupID 80
-          sudo dscl . -create /Users/vncuser NFSHomeDirectory /Users/vncuser
-          sudo dscl . -passwd /Users/vncuser vncpass
-          sudo createhomedir -c -u vncuser > /dev/null
+          sudo apt update
+          sudo apt install -y xfce4 xfce4-goodies tigervnc-standalone-server
 
-      - name: Reset and enable Remote Management with VNC legacy mode and password
+      - name: Set VNC password
         run: |
-          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -deactivate -stop
-          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
-            -activate -configure -access -on -privs -all -users vncuser \
-            -clientopts -setvnclegacy -vnclegacy yes \
-            -clientopts -setvncpw -vncpw vncpass \
-            -restart -agent
+          mkdir -p ~/.vnc
+          echo "password" | vncpasswd -f > ~/.vnc/passwd
+          chmod 600 ~/.vnc/passwd
+
+      - name: Start VNC server
+        run: |
+          vncserver :1 -geometry 1280x800 -depth 24
+
+      - name: Download and install FRPC
+        run: |
+          wget https://github.com/fatedier/frp/releases/download/v0.58.0/frpc_0.58.0_linux_amd64.tar.gz
+          tar -xzf frpc_0.58.0_linux_amd64.tar.gz
+          sudo mv frpc_0.58.0_linux_amd64/frpc /usr/local/bin/
+          chmod +x /usr/local/bin/frpc
 
       - name: Create frpc.ini
         run: |
@@ -46,12 +42,14 @@ jobs:
           [vnc]
           type = tcp
           local_ip = 127.0.0.1
-          local_port = 5900
+          local_port = 5901
           remote_port = 15900
           EOF
 
-      - name: Show frpc.ini
+      - name: Show frpc.ini (optional debug)
         run: cat frpc.ini
 
-      - name: Start frpc
-        run: frpc -c frpc.ini
+      - name: Start frpc and block forever
+        run: |
+          echo "VNC available at ${{ secrets.IP }}:15900 (use a VNC client)"
+          frpc -c frpc.ini
