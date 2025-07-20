@@ -1,4 +1,4 @@
-name: macOS VNC with Dummy User and FRP
+name: macOS VNC with Dummy User and FRP Tunnel
 
 on:
   push:
@@ -18,8 +18,11 @@ jobs:
           sudo sysadminctl -addUser vncuser -password vncpass -admin
           sudo dscl . -create /Users/vncuser IsHidden 1
 
-      - name: Enable Apple Remote Management and set VNC password
+      - name: Restart and enable Apple Remote Management with VNC access
         run: |
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+            -deactivate -stop
+
           sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
             -activate -configure -access -on -privs -all -users vncuser \
             -clientopts -setvnclegacy -vnclegacy yes \
