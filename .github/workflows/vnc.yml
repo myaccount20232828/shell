@@ -10,21 +10,17 @@ jobs:
       - name: Install TigerVNC
         run: |
           brew update
-          brew install tigervnc
+          brew install tiger-vnc
 
       - name: Start VNC server on :1 (port 5901)
         run: |
-          # Set VNC password (here: 'vncpass')
           mkdir -p ~/.vnc
           echo "vncpass" | vncpasswd -f > ~/.vnc/passwd
           chmod 600 ~/.vnc/passwd
-
-          # Start VNC server in background with geometry and depth
           vncserver :1 -geometry 1280x800 -depth 24
 
       - name: Install frpc via Homebrew
-        run: |
-          brew install frpc
+        run: brew install frpc
 
       - name: Create frpc.ini config safely
         run: |
