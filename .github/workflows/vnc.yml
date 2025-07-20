@@ -1,4 +1,4 @@
-name: Reverse VNC Tunnel with TigerVNC (No Password)
+name: macOS Built-in VNC with frp Tunnel
 
 on:
   push:
@@ -9,19 +9,18 @@ jobs:
   tunnel:
     runs-on: macos-latest
     steps:
-      - name: Install TigerVNC
+      - name: Enable macOS built-in VNC server with password
         run: |
-          brew update
-          brew install tiger-vnc
-
-      - name: Start VNC server on :1 (port 5901) without password
-        run: |
-          vncserver :1 -geometry 1280x800 -depth 24 -SecurityTypes None
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+            -activate -configure -access -on \
+            -clientopts -setvnclegacy -vnclegacy yes \
+            -clientopts -setvncpw -vncpw vncpass \
+            -restart -agent -privs -all
 
       - name: Install frpc via Homebrew
         run: brew install frpc
 
-      - name: Create frpc.ini config safely
+      - name: Create frpc.ini config
         run: |
           echo "[common]" > frpc.ini
           echo "server_addr = ${{ secrets.IP }}" >> frpc.ini
@@ -30,10 +29,10 @@ jobs:
           echo "[vnc]" >> frpc.ini
           echo "type = tcp" >> frpc.ini
           echo "local_ip = 127.0.0.1" >> frpc.ini
-          echo "local_port = 5901" >> frpc.ini
-          echo "remote_port = 5901" >> frpc.ini
+          echo "local_port = 5900" >> frpc.ini
+          echo "remote_port = 5900" >> frpc.ini
 
-      - name: Print frpc.ini content
+      - name: Show frpc.ini content
         run: cat frpc.ini
 
       - name: Run frpc client
