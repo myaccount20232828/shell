@@ -1,42 +1,51 @@
-name: macOS VNC with FRPC and new user setup
+name: VNC with FRPC Tunnel (Full Ubuntu Desktop)
 
 on: [push]
 
 jobs:
-  macos-vnc-frpc:
-    runs-on: macos-latest
+  vnc-frp:
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Create new user "vncuser" with password "pass" and setup home directory
+      - name: Download and install FRPC
         run: |
-          sudo sysadminctl -addUser vncuser -fullName "VNC User" -password pass
-          sudo dscl . -append /Groups/admin GroupMembership vncuser
-
-          if [ ! -d "/Users/vncuser" ]; then
-            sudo mkdir -p /Users/vncuser
-          fi
-          sudo mkdir -p /Users/vncuser/Desktop
-          sudo chown -R vncuser:staff /Users/vncuser
-          sudo chmod -R 700 /Users/vncuser
-
-      - name: Enable Remote Management with full privileges and VNC password
-        run: |
-          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -activate
-          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -allowAccessFor -allUsers -privs -all
-          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -clientopts -setvnclegacy -vnclegacy yes
-          echo "pass" | sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -clientopts -setvncpw -vncpw -
-          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -restart -agent -console
-
-      - name: Install FRPC via Homebrew
-        run: |
-          brew update
-          brew install frpc
+          wget https://github.com/fatedier/frp/releases/download/v0.63.0/frp_0.63.0_linux_amd64.tar.gz
+          tar -xzf frp_0.63.0_linux_amd64.tar.gz
+          sudo mv frp_0.63.0_linux_amd64/frpc /usr/local/bin/
+          chmod +x /usr/local/bin/frpc
           frpc --version
 
-      - name: Create frpc.ini to expose VNC
+      - name: Install Full Ubuntu Desktop + VNC
+        run: |
+          sudo apt update
+          sudo apt install -y ubuntu-desktop tigervnc-standalone-server dbus-x11
+
+      - name: Set VNC password
+        run: |
+          mkdir -p ~/.vnc
+          echo "password" | vncpasswd -f > ~/.vnc/passwd
+          chmod 600 ~/.vnc/passwd
+
+      - name: Set up VNC xstartup for GNOME
+        run: |
+          mkdir -p ~/.vnc
+          cat > ~/.vnc/xstartup <<EOF
+          #!/bin/bash
+          export XDG_SESSION_TYPE=x11
+          export XDG_CURRENT_DESKTOP=ubuntu:GNOME
+          export GDMSESSION=ubuntu
+          gnome-session &
+          EOF
+          chmod +x ~/.vnc/xstartup
+
+      - name: Start VNC server
+        run: |
+          vncserver :1 -geometry 1280x800 -depth 24
+
+      - name: Create frpc.ini
         run: |
           cat > frpc.ini <<EOF
           [common]
@@ -46,14 +55,14 @@ jobs:
           [vnc]
           type = tcp
           local_ip = 127.0.0.1
-          local_port = 5900
+          local_port = 5901
           remote_port = 15900
           EOF
 
-      - name: Show frpc.ini (for debug)
+      - name: Show frpc.ini (debug)
         run: cat frpc.ini
 
       - name: Start frpc and block forever
         run: |
-          echo "Starting frpc to expose macOS VNC server via FRP..."
+          echo "VNC is now exposed via FRP at ${{ secrets.IP }}:15900"
           frpc -c frpc.ini
