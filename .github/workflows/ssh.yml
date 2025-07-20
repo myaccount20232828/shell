@@ -76,4 +76,8 @@ jobs:
           chmod 600 ~/.ssh/id_dropbear
 
           ssh -i ~/.ssh/id_dropbear -o StrictHostKeyChecking=no -p 2222 dropbearuser@localhost "echo '✅ SSH into Dropbear succeeded!'"
+      - name: Keep runner alive
+        run: |
+          echo "Dropbear and frpc are running. Runner will stay alive."
+          while true; do sleep 3600; done
           
