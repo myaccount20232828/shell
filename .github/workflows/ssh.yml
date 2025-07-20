@@ -17,9 +17,9 @@ jobs:
 
       - name: Create dropbear user with password 'alpine'
         run: |
-          sudo sysadminctl -addUser dropbearuser -fullName "Dropbear User" -password alpine
+          sudo sysadminctl -addUser dropbearuser -fullName "Dropbear User" -password alpine -admin
           sudo createhomedir -c -u dropbearuser
-          sudo dscl . -create /Users/dropbearuser UserShell /bin/bash
+          sudo dscl . -create /Users/dropbearuser UserShell /bin/zsh
           sudo chown -R dropbearuser /Users/dropbearuser
 
       - name: Generate Dropbear host keys
@@ -65,19 +65,5 @@ jobs:
           EOF
 
       - name: Start frpc
-        run: frpc -c frpc.ini &
-
-      - name: Test local SSH into Dropbear
-        run: |
-          echo "Testing SSH to Dropbear on localhost:2222"
-          
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVKEY }}" > ~/.ssh/id_dropbear
-          chmod 600 ~/.ssh/id_dropbear
-
-          ssh -i ~/.ssh/id_dropbear -o StrictHostKeyChecking=no -p 2222 dropbearuser@localhost "echo '✅ SSH into Dropbear succeeded!'"
-      - name: Keep runner alive
-        run: |
-          echo "Dropbear and frpc are running. Runner will stay alive."
-          while true; do sleep 3600; done
+        run: frpc -c frpc.ini
           
