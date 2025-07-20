@@ -1,0 +1,48 @@
+name: macOS NoMachine via FRP with remote port 4000
+
+on:
+  workflow_dispatch:
+
+jobs:
+  macos-nomachine:
+    runs-on: macos-latest
+
+    steps:
+      - name: Install frpc
+        run: brew install frpc
+
+      - name: Download and Install NoMachine
+        run: |
+          curl -L -o nomachine.dmg "https://web9001.nomachine.com/download/9.0/MacOSX/nomachine_9.0.188_11.dmg"
+          hdiutil mount nomachine.dmg
+          sudo installer -pkg /Volumes/NoMachine*/NoMachine.pkg -target /
+
+      - name: Start NoMachine server
+        run: |
+          sudo /Applications/NoMachine.app/Contents/Frameworks/bin/nxserver --startup
+          sleep 5
+          echo "NoMachine started."
+
+      - name: Create frpc.ini
+        run: |
+          cat > frpc.ini <<EOF
+          [common]
+          server_addr = ${{ secrets.IP }}
+          server_port = 1234
+
+          [nomachine]
+          type = tcp
+          local_ip = 127.0.0.1
+          local_port = 4000
+          remote_port = 4000
+          EOF
+
+      - name: Start frpc
+        run: |
+          frpc -c frpc.ini &
+          echo "frpc started."
+
+      - name: Keep alive
+        run: |
+          echo "Sleeping indefinitely to keep the runner alive..."
+          tail -f /dev/null
