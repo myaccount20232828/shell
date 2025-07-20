@@ -1,0 +1,39 @@
+name: Reverse HTTP Tunnel with Homebrew
+
+on:
+  workflow_dispatch:
+
+jobs:
+  tunnel:
+    runs-on: macos-latest
+    steps:
+      - name: Start simple HTTP server
+        run: |
+          mkdir -p demo
+          echo "<h1>Hello from GitHub Actions</h1>" > demo/index.html
+          cd demo
+          python3 -m http.server 8000 &
+          echo "HTTP server running on port 8000"
+
+      - name: Install frpc via Homebrew
+        run: |
+          brew update
+          brew install frpc
+
+      - name: Create frpc.ini config
+        run: |
+          cat > frpc.ini <<EOF
+[common]
+server_addr = ${{ secrets.IP }}
+server_port = 1234
+
+[http-demo]
+type = tcp
+local_ip = 127.0.0.1
+local_port = 8000
+remote_port = 9000
+EOF
+
+      - name: Run frpc client
+        run: |
+          frpc -c frpc.ini
