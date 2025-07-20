@@ -1,43 +1,61 @@
-name: SSH Tunnel with Dropbear and frpc
+name: macOS Dropbear SSH via FRP with remote port 15900
 
 on:
   push:
-  workflow_dispatch:
+    branches:
+      - main
 
 jobs:
-  ssh-tunnel:
+  macos-dropbear:
     runs-on: macos-latest
-    steps:
-      - name: Install dropbear and frpc
-        run: |
-          brew install dropbear frpc
 
-      - name: Generate dropbear host keys
+    steps:
+      - name: Install frpc and dropbear
+        run: |
+          brew install frpc
+          brew install dropbear
+
+      - name: Disable Spotlight indexing
+        run: sudo mdutil -i off -a
+
+      - name: Create dropbear user and home
+        run: |
+          sudo dscl . -create /Users/dropbearuser
+          sudo dscl . -create /Users/dropbearuser UserShell /bin/bash
+          sudo dscl . -create /Users/dropbearuser RealName "Dropbear User"
+          sudo dscl . -create /Users/dropbearuser UniqueID 1002
+          sudo dscl . -create /Users/dropbearuser PrimaryGroupID 80
+          sudo dscl . -create /Users/dropbearuser NFSHomeDirectory /Users/dropbearuser
+          sudo dscl . -passwd /Users/dropbearuser dropbearpass
+          sudo createhomedir -c -u dropbearuser > /dev/null
+
+      - name: Generate dropbear keys (if not existing)
         run: |
           sudo mkdir -p /etc/dropbear
-          sudo dropbearkey -t rsa -f /etc/dropbear/dropbear_rsa_host_key
-          sudo dropbearkey -t ecdsa -f /etc/dropbear/dropbear_ecdsa_host_key
-          sudo dropbearkey -t ed25519 -f /etc/dropbear/dropbear_ed25519_host_key
+          sudo dropbearkey -t rsa -f /etc/dropbear/dropbear_rsa_host_key || true
+          sudo dropbearkey -t dss -f /etc/dropbear/dropbear_dss_host_key || true
 
-      - name: Start dropbear SSH server
+      - name: Start dropbear server
         run: |
-          sudo dropbear -p 2222 \
-            -r /etc/dropbear/dropbear_rsa_host_key \
-            -c /etc/dropbear/dropbear_ecdsa_host_key \
-            -y /etc/dropbear/dropbear_ed25519_host_key \
-            -E -F &
+          sudo dropbear -E -F -p 2222 -r /etc/dropbear/dropbear_rsa_host_key &
           sleep 5
-          echo "Dropbear processes:"
-          ps aux | grep dropbear
-          echo "Checking port 2222 listener:"
-          lsof -iTCP:2222 -sTCP:LISTEN || echo "Nothing listening on 2222"
 
-      - name: Create frpc.ini config using echo
+      - name: Create frpc.ini
         run: |
-          echo "[common]\nserver_addr = ${{ secrets.IP }}\nserver_port = 1234\n\n[ssh]\ntype = tcp\nlocal_ip = 127.0.0.1\nlocal_port = 2222\nremote_port = 2222" > frpc.ini
-          echo "=== frpc.ini contents ==="
-          cat frpc.ini
+          cat > frpc.ini <<EOF
+          [common]
+          server_addr = ${{ secrets.IP }}
+          server_port = 1234
 
-      - name: Start frpc client
-        run: |
-          frpc -c frpc.ini
+          [ssh]
+          type = tcp
+          local_ip = 127.0.0.1
+          local_port = 2222
+          remote_port = 15900
+          EOF
+
+      - name: Show frpc.ini
+        run: cat frpc.ini
+
+      - name: Start frpc
+        run: frpc -c frpc.ini
