@@ -1,13 +1,13 @@
-name: Setup Dropbear SSH with FRP reverse tunnel on macOS runner
+name: Dropbear SSH + frp reverse tunnel
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:   # manual trigger
+  workflow_dispatch:
 
 jobs:
-  dropbear-ssh:
+  ssh-tunnel:
     runs-on: macos-latest
 
     steps:
@@ -15,25 +15,25 @@ jobs:
         run: |
           brew install frpc dropbear
 
-      - name: Create frpc.yaml config
+      - name: Create frpc.ini config
         run: |
-          cat > frpc.yaml <<EOF
-          common:
-            server_addr: ${{ secrets.IP }}
-            server_port: 1234
+          cat > frpc.ini <<EOF
+          [common]
+          server_addr = ${{ secrets.IP }}
+          server_port = 1234
 
-          ssh:
-            type: tcp
-            local_ip: 127.0.0.1
-            local_port: 2222
-            remote_port: 2222
+          [ssh]
+          type = tcp
+          local_ip = 127.0.0.1
+          local_port = 2222
+          remote_port = 2222
           EOF
 
-      - name: Show frpc.yaml
-        run: cat frpc.yaml
+      - name: Show frpc.ini
+        run: cat frpc.ini
 
       - name: Start Dropbear SSH server and frpc client
         run: |
           nohup dropbear -p 2222 > dropbear.log 2>&1 &
           sleep 3
-          frpc -c frpc.yaml
+          frpc -c frpc.ini
