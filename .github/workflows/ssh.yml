@@ -1,28 +1,36 @@
-name: Dropbear SSH + frpc with Full Debug
+name: SSH Tunnel with frpc on macOS
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
   ssh-tunnel:
     runs-on: macos-latest
-
     steps:
-      - name: Install frpc, dropbear, and coreutils
+      - name: Install frpc via Homebrew
         run: |
-          brew install frpc dropbear coreutils
+          brew update
+          brew install frpc
+          frpc --version
 
-      - name: Verify dropbear installation
+      - name: Enable Remote Login (sshd) and start sshd on port 2222
         run: |
-          echo "Dropbear path:"
-          which dropbear
-          echo "Dropbear version and help:"
-          dropbear -h || echo "dropbear -h failed"
+          echo "Enabling Remote Login (sshd)..."
+          sudo systemsetup -setremotelogin on
 
-      - name: Create frpc.ini config
+          echo "Stopping existing sshd if running..."
+          sudo launchctl unload /System/Library/LaunchDaemons/ssh.plist || true
+
+          echo "Starting sshd on port 2222..."
+          sudo /usr/sbin/sshd -p 2222 -D &
+          sleep 5
+
+          echo "Check sshd listening on port 2222:"
+          lsof -iTCP:2222 -sTCP:LISTEN || echo "sshd not listening!"
+
+      - name: Create frpc config file
         run: |
           cat > frpc.ini <<EOF
           [common]
@@ -35,29 +43,31 @@ jobs:
           local_port = 2222
           remote_port = 2222
           EOF
-          echo "Created frpc.ini:"
+
+          echo "frpc.ini content:"
           cat frpc.ini
 
-      - name: Attempt 1
+      - name: Start frpc client with config
         run: |
-          gtimeout 15 dropbear -p 2222
-        continue-on-error: true
+          echo "Starting frpc..."
+          frpc -c frpc.ini &
 
-      - name: Check if port 2222 is listening after attempt 1
-        run: |
-          lsof -iTCP:2222 -sTCP:LISTEN || echo "Nothing listening on 2222"
-
-      - name: Attempt
-        run: |
-          dropbear -p 2222 -E -F > dropbear.log 2>&1 &
           sleep 5
-          echo "Dropbear processes:"
-          ps aux | grep dropbear || true
-          echo "Port 2222 listening check:"
-          lsof -iTCP:2222 -sTCP:LISTEN || echo "Nothing listening on 2222"
-          echo "Dropbear logs:"
-          cat dropbear.log
+          ps aux | grep frpc
 
-      - name: Start frpc client to create reverse ssh tunnel
+      - name: Show network listeners (debug)
         run: |
-          frpc -c frpc.ini
+          netstat -anv | grep LISTEN
+
+      - name: Show current ssh config and users (debug)
+        run: |
+          sudo cat /etc/ssh/sshd_config
+          dscl . list /Users
+
+      - name: Show last lines of frpc log if any
+        run: |
+          if [ -f frpc.log ]; then
+            tail -20 frpc.log
+          else
+            echo "No frpc.log found"
+          fi
