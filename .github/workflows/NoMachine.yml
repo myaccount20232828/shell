@@ -1,4 +1,4 @@
-name: macOS NoMachine via FRP with remote port 4000
+name: macOS NoMachine with Dummy User via FRP
 
 on:
   workflow_dispatch:
@@ -10,6 +10,13 @@ jobs:
     steps:
       - name: Install frpc
         run: brew install frpc
+
+      - name: Create dummy macOS user `devuser`
+        run: |
+          sudo sysadminctl -addUser devuser -fullName "Dev User" -password alpine
+          sudo dscl . -create /Users/devuser IsHidden 0
+          sudo dscl . -append /Groups/admin GroupMembership devuser
+          sudo createhomedir -c -u devuser > /dev/null
 
       - name: Download and Install NoMachine
         run: |
