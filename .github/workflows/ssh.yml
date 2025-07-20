@@ -25,9 +25,6 @@ jobs:
           alpine
           alpine
           EOF
-          sudo createhomedir -c -u root
-          sudo dscl . -create /Users/root UserShell /bin/zsh
-          sudo chown -R root /Users/root
 
       - name: Generate Dropbear host keys
         run: |
