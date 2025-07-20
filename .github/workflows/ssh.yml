@@ -29,14 +29,16 @@ jobs:
           sudo dscl . -passwd /Users/dropbearuser dropbearpass
           sudo createhomedir -c -u dropbearuser > /dev/null
 
-      - name: Generate dropbear keys (if not existing)
+      - name: Generate dropbear RSA host key (if not exists)
         run: |
           sudo mkdir -p /etc/dropbear
-          sudo dropbearkey -t rsa -f /etc/dropbear/dropbear_rsa_host_key || true
-          sudo dropbearkey -t dss -f /etc/dropbear/dropbear_dss_host_key || true
+          if [ ! -f /etc/dropbear/dropbear_rsa_host_key ]; then
+            sudo dropbearkey -t rsa -f /etc/dropbear/dropbear_rsa_host_key
+          fi
 
       - name: Start dropbear server
         run: |
+          sudo pkill dropbear || true
           sudo dropbear -E -F -p 2222 -r /etc/dropbear/dropbear_rsa_host_key &
           sleep 5
 
