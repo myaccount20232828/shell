@@ -1,4 +1,4 @@
-name: macOS VNC via FRP with custom port forwarding
+name: macOS VNC via FRP with remote port 15900
 
 on:
   push:
@@ -47,7 +47,7 @@ jobs:
           type = tcp
           local_ip = 127.0.0.1
           local_port = 5900
-          remote_port = 5900
+          remote_port = 15900
           EOF
 
       - name: Show frpc.ini
