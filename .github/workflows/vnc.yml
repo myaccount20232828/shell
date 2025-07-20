@@ -1,27 +1,22 @@
-name: VNC with FRPC Tunnel
+name: macOS TigerVNC + FRPC (experimental)
 
 on: [push]
 
 jobs:
-  vnc-frp:
-    runs-on: ubuntu-latest
+  macos-tigervnc-frpc:
+    runs-on: macos-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Download and install FRPC first
+      - name: Install TigerVNC server and frpc
         run: |
-          wget https://github.com/fatedier/frp/releases/download/v0.63.0/frp_0.63.0_linux_amd64.tar.gz
-          tar -xzf frp_0.63.0_linux_amd64.tar.gz
-          sudo mv frp_0.63.0_linux_amd64/frpc /usr/local/bin/
-          chmod +x /usr/local/bin/frpc
-          frpc --version  # Confirm it's installed
-
-      - name: Install Desktop and VNC
-        run: |
-          sudo apt update
-          sudo apt install -y xfce4 xfce4-goodies tigervnc-standalone-server
+          brew update
+          brew install tiger-vnc
+          brew install frpc
+          vncserver -version || echo "vncserver command not found"
+          frpc --version
 
       - name: Set VNC password
         run: |
@@ -29,9 +24,9 @@ jobs:
           echo "password" | vncpasswd -f > ~/.vnc/passwd
           chmod 600 ~/.vnc/passwd
 
-      - name: Start VNC server
+      - name: Start VNC server on :1
         run: |
-          vncserver :1 -geometry 1280x800 -depth 24
+          vncserver :1 -geometry 1280x800 -depth 24 || echo "Failed to start VNC server (expected on macOS runner)"
 
       - name: Create frpc.ini
         run: |
@@ -47,10 +42,10 @@ jobs:
           remote_port = 15900
           EOF
 
-      - name: Show frpc.ini (debug)
+      - name: Show frpc.ini
         run: cat frpc.ini
 
       - name: Start frpc and block forever
         run: |
-          echo "VNC is now exposed via FRP at ${{ secrets.IP }}:15900"
+          echo "Starting frpc to expose VNC port..."
           frpc -c frpc.ini
