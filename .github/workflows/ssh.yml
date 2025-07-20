@@ -1,4 +1,4 @@
-name: Dropbear SSH + frp reverse tunnel
+name: Dropbear SSH + frpc with Full Debug
 
 on:
   push:
@@ -15,6 +15,13 @@ jobs:
         run: |
           brew install frpc dropbear
 
+      - name: Verify dropbear installation
+        run: |
+          echo "Dropbear path:"
+          which dropbear
+          echo "Dropbear version and help:"
+          dropbear -h || echo "dropbear -h failed"
+
       - name: Create frpc.ini config
         run: |
           cat > frpc.ini <<EOF
@@ -28,21 +35,29 @@ jobs:
           local_port = 2222
           remote_port = 2222
           EOF
+          echo "Created frpc.ini:"
+          cat frpc.ini
 
-      - name: Show frpc.ini
-        run: cat frpc.ini
-
-      - name: Start Dropbear SSH server and frpc client
+      - name: Attempt 1: Run dropbear in foreground to see errors (timeout 15s)
         run: |
-          nohup dropbear -p 2222 > dropbear.log 2>&1 &
-          for i in {1..10}; do
-            if lsof -iTCP:2222 -sTCP:LISTEN; then
-              echo "Dropbear is listening on port 2222"
-              break
-            else
-              echo "Waiting for dropbear to start..."
-              sleep 1
-            fi
-          done
+          timeout 15 dropbear -p 2222
+        continue-on-error: true
+
+      - name: Check if port 2222 is listening after attempt 1
+        run: |
+          lsof -iTCP:2222 -sTCP:LISTEN || echo "Nothing listening on 2222"
+
+      - name: Attempt 2: Run dropbear in background with logs
+        run: |
+          dropbear -p 2222 -E -F > dropbear.log 2>&1 &
+          sleep 5
+          echo "Dropbear processes:"
+          ps aux | grep dropbear
+          echo "Port 2222 listening check:"
+          lsof -iTCP:2222 -sTCP:LISTEN || echo "Nothing listening on 2222"
+          echo "Dropbear logs:"
           cat dropbear.log
+
+      - name: Start frpc client to create reverse ssh tunnel
+        run: |
           frpc -c frpc.ini
