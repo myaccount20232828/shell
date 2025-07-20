@@ -1,26 +1,16 @@
 name: macOS Dropbear SSH via FRP with remote port 15900
-
 on:
   push:
-    branches:
-      - main
-
 jobs:
   macos-dropbear:
     runs-on: macos-latest
-
     steps:
       - name: Install frpc and dropbear
         run: |
           brew install frpc
           brew install dropbear
-
-      - name: Create dropbear user with password 'alpine'
+      - name: Prep root user
         run: |
-          sudo sysadminctl -addUser dropbearuser -fullName "Dropbear User" -password alpine -admin
-          sudo createhomedir -c -u dropbearuser
-          sudo dscl . -create /Users/dropbearuser UserShell /bin/zsh
-          sudo chown -R dropbearuser /Users/dropbearuser
           sudo passwd root <<EOF
           alpine
           alpine
@@ -35,14 +25,8 @@ jobs:
           sudo dropbearkey -t ed25519 -f /etc/dropbear/dropbear_ed25519_host_key || echo "ED25519 not supported"
           sudo chmod 600 /etc/dropbear/dropbear_*_host_key
 
-      - name: Set up public key auth for dropbearuser
+      - name: Set up public key auth for root
         run: |
-          sudo mkdir -p /Users/dropbearuser/.ssh
-          echo "${{ secrets.SSH_PUBKEY }}" | sudo tee /Users/dropbearuser/.ssh/authorized_keys > /dev/null
-          sudo chmod 700 /Users/dropbearuser/.ssh
-          sudo chmod 600 /Users/dropbearuser/.ssh/authorized_keys
-          sudo chown -R dropbearuser /Users/dropbearuser/.ssh
-
           sudo mkdir -p /var/root/.ssh
           echo "${{ secrets.SSH_PUBKEY }}" | sudo tee /var/root/.ssh/authorized_keys > /dev/null
           sudo chmod 700 /var/root/.ssh
@@ -77,4 +61,3 @@ jobs:
 
       - name: Start frpc
         run: frpc -c frpc.ini
-          
