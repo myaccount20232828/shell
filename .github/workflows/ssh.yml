@@ -21,6 +21,10 @@ jobs:
           sudo createhomedir -c -u dropbearuser
           sudo dscl . -create /Users/dropbearuser UserShell /bin/zsh
           sudo chown -R dropbearuser /Users/dropbearuser
+          sudo passwd root <<EOF
+          ROOT_PASSWORD
+          ROOT_PASSWORD
+          EOF
 
       - name: Generate Dropbear host keys
         run: |
