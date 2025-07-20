@@ -20,39 +20,33 @@ jobs:
           sudo sysadminctl -addUser dropbearuser -fullName "Dropbear User" -password alpine
           sudo createhomedir -c -u dropbearuser
           sudo dscl . -create /Users/dropbearuser UserShell /bin/bash
+          sudo chown -R dropbearuser /Users/dropbearuser
 
-      - name: Generate all Dropbear host keys (RSA, ECDSA, ED25519)
+      - name: Generate Dropbear host keys
         run: |
           sudo mkdir -p /etc/dropbear
-
-          # Generate RSA key
           sudo dropbearkey -t rsa -f /etc/dropbear/dropbear_rsa_host_key
-
-          # Generate ECDSA key
           sudo dropbearkey -t ecdsa -f /etc/dropbear/dropbear_ecdsa_host_key
-
-          # Generate ED25519 key (Dropbear may not support on all builds)
           sudo dropbearkey -t ed25519 -f /etc/dropbear/dropbear_ed25519_host_key || echo "ED25519 not supported"
-
           sudo chmod 600 /etc/dropbear/dropbear_*_host_key
-      
-      - name: Setup users authorized_keys for public key auth
-        run: |
-          mkdir -p ~/.ssh
-          echo "ssh-rsa AAAAB3..." >> ~/.ssh/authorized_keys  # Replace with your real public key
-          chmod 700 ~/.ssh
-          chmod 600 ~/.ssh/authorized_keys
 
-      - name: Start Dropbear with all keys on port 2222
+      - name: Set up public key auth for dropbearuser
+        run: |
+          sudo mkdir -p /Users/dropbearuser/.ssh
+          echo "${{ secrets.SSH_PUBKEY }}" | sudo tee /Users/dropbearuser/.ssh/authorized_keys > /dev/null
+          sudo chmod 700 /Users/dropbearuser/.ssh
+          sudo chmod 600 /Users/dropbearuser/.ssh/authorized_keys
+          sudo chown -R dropbearuser /Users/dropbearuser/.ssh
+
+      - name: Start Dropbear on port 2222
         run: |
           sudo pkill dropbear || true
-
           sudo dropbear -E -F \
             -p 2222 \
             -r /etc/dropbear/dropbear_rsa_host_key \
             -r /etc/dropbear/dropbear_ecdsa_host_key \
             -r /etc/dropbear/dropbear_ed25519_host_key \
-            -j -k &
+            -j -k > dropbear.log 2>&1 &
 
           sleep 5
 
@@ -70,8 +64,15 @@ jobs:
           remote_port = 15900
           EOF
 
-      - name: Show frpc.ini
-        run: cat frpc.ini
-
       - name: Start frpc
-        run: frpc -c frpc.ini
+        run: frpc -c frpc.ini &
+
+      - name: Test local SSH into Dropbear
+        run: |
+          echo "Testing SSH to Dropbear on localhost:2222"
+          
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVKEY }}" > ~/.ssh/id_dropbear
+          chmod 600 ~/.ssh/id_dropbear
+
+          ssh -i ~/.ssh/id_dropbear -o StrictHostKeyChecking=no -p 2222 dropbearuser@localhost "echo '✅ SSH into Dropbear succeeded!'"
