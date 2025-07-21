@@ -9,8 +9,6 @@ jobs:
         uses: actions/checkout@v2
       - name: Install frpc
         run: brew install frpc
-      - name: Install Quartz
-        run: pip3 install pyobjc-framework-Quartz --break-system-packages
       - name: Prep root user
         run: |
           sudo passwd root <<EOF
