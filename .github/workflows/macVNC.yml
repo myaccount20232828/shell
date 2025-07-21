@@ -29,7 +29,7 @@ jobs:
           sudo chsh -s /bin/zsh root
       - name: Start VNC server
         run: |
-          ./macVNC/build/macVNC.app/Contents/MacOS/macVNC -passwd alpine
+          ./macVNC/build/macVNC.app/Contents/MacOS/macVNC -passwd alpine &
       - name: Create frpc.ini
         run: |
           cat > frpc.ini <<EOF
