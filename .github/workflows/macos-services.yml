@@ -1,0 +1,19 @@
+name: macOS SSH & VNC with FRP
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: 'Choose service to start'
+        required: true
+        default: ssh
+        type: choice
+        options:
+          - ssh
+          - vnc
+          - both
+jobs:
+  run_services:
+    runs-on: macos-latest
+    steps:
+      - name: Install dependencies
+        run: brew install frpc dropbear libvncserver
