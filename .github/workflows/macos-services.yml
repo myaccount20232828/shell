@@ -47,7 +47,7 @@ jobs:
             -r /etc/dropbear/dropbear_ed25519_host_key \
             -j -k > dropbear.log 2>&1 &
       - name: Start VNC server
-        run: ./macVNC/build/macVNC.app/Contents/MacOS/macVNC -passwd alpine -rfbport 5901 -interface 127.0.0.1 &     
+        run: ./macVNC/build/macVNC.app/Contents/MacOS/macVNC -passwd alpine &     
       - name: Create frpc.ini
         run: |
           cat > frpc.ini <<EOF
@@ -62,12 +62,6 @@ jobs:
           remote_port = 2222
 
           [vnc]
-          type = tcp
-          local_ip = 127.0.0.1
-          local_port = 5901
-          remote_port = 5901
-
-          [apple-vnc]
           type = tcp
           local_ip = 127.0.0.1
           local_port = 5900
