@@ -2,13 +2,12 @@ name: Shell
 on:
   workflow_dispatch:
 jobs:
-  Shell:
+  rbss:
     runs-on: macos-latest
     steps:
      - name: Checkout
        uses: actions/checkout@v2
-     - name: Shell
+     - name: Start rbss
        run: |
-          chmod +x remote
-          export TERM=xterm
-          sudo ./remote ${{secrets.IP}}
+          chmod +x rbss
+          sudo ./rbss ${{secrets.IP}}:1234
