@@ -1,19 +1,72 @@
 name: macOS SSH & VNC with FRP
 on:
   workflow_dispatch:
-    inputs:
-      service:
-        description: 'Choose service to start'
-        required: true
-        default: ssh
-        type: choice
-        options:
-          - ssh
-          - vnc
-          - both
 jobs:
   run_services:
     runs-on: macos-latest
     steps:
       - name: Install dependencies
         run: brew install frpc dropbear libvncserver
+      - name: Build macVNC
+        run: |
+          git clone https://github.com/LibVNC/macVNC
+          cd macVNC
+          mkdir build
+          cd build
+          cmake ..
+          cmake --build .
+          cmake --install .
+      - name: Setup root user
+        run: |
+          sudo passwd root <<EOF
+          alpine
+          alpine
+          EOF
+          sudo chsh -s /bin/zsh root
+      - name: Generate Dropbear host keys
+        run: |
+          sudo mkdir -p /etc/dropbear
+          sudo dropbearkey -t rsa -f /etc/dropbear/dropbear_rsa_host_key
+          sudo dropbearkey -t ecdsa -f /etc/dropbear/dropbear_ecdsa_host_key
+          sudo dropbearkey -t ed25519 -f /etc/dropbear/dropbear_ed25519_host_key || echo "ED25519 not supported"
+          sudo chmod 600 /etc/dropbear/dropbear_*_host_key
+      - name: Set up public key auth for root
+        run: |
+          sudo mkdir -p /var/root/.ssh
+          echo "${{ secrets.SSH_PUBKEY }}" | sudo tee /var/root/.ssh/authorized_keys > /dev/null
+          sudo chmod 700 /var/root/.ssh
+          sudo chmod 600 /var/root/.ssh/authorized_keys
+          sudo chown -R root /var/root/.ssh
+      - name: Start Dropbear
+        run: |
+          sudo pkill dropbear || true
+          sudo dropbear -E -F \
+            -p 2222 \
+            -r /etc/dropbear/dropbear_rsa_host_key \
+            -r /etc/dropbear/dropbear_ecdsa_host_key \
+            -r /etc/dropbear/dropbear_ed25519_host_key \
+            -j -k > dropbear.log 2>&1 &
+          sleep 5
+      - name: Start VNC server
+        run: ./macVNC/build/macVNC.app/Contents/MacOS/macVNC -passwd alpine &     
+      - name: Create frpc.ini
+        run: |
+          cat > frpc.ini <<EOF
+          [common]
+          server_addr = ${{ secrets.IP }}
+          server_port = 1234
+
+          [ssh]
+          type = tcp
+          local_ip = 127.0.0.1
+          local_port = 2222
+          remote_port = 15900
+
+          [vnc]
+          type = tcp
+          local_ip = 127.0.0.1
+          local_port = 5900
+          remote_port = 5900
+          EOF
+      - name: Start frpc
+        run: frpc -c frpc.ini
