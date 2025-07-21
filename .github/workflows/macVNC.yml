@@ -1,0 +1,47 @@
+name: macVNC
+on:
+  workflow_dispatch:
+jobs:
+  macVNC:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install libvncserver
+        run: brew install libvncserver
+      - name: Build macVNC
+        run: |
+          git clone https://github.com/LibVNC/macVNC
+          cd macVNC
+          mkdir build
+          cd build
+          cmake ..
+          cmake --build .
+          cmake --install .
+      - name: Install frpc
+        run: brew install frpc
+      - name: Prep root user
+        run: |
+          sudo passwd root <<EOF
+          alpine
+          alpine
+          EOF
+          sudo chsh -s /bin/zsh root
+      - name: Start VNC server
+        run: |
+          ./macVNC/build/macVNC.app/Contents/MacOS/macVNC -passwd alpine
+      - name: Create frpc.ini
+        run: |
+          cat > frpc.ini <<EOF
+          [common]
+          server_addr = ${{ secrets.IP }}
+          server_port = 1234
+
+          [ssh]
+          type = tcp
+          local_ip = 127.0.0.1
+          local_port = 5900
+          remote_port = 5900
+          EOF
+      - name: Start frpc
+        run: frpc -c frpc.ini
