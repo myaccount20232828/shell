@@ -7,6 +7,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+      - name: Install libvncserver
+        run: brew install libvncserver
+      - name: Build macVNC
+        run: |
+          git clone https://github.com/LibVNC/macVNC
+          cd macVNC
+          mkdir build
+          cd build
+          cmake ..
+          cmake --build .
+          cmake --install .
       - name: Install frpc
         run: brew install frpc
       - name: Prep root user
@@ -16,10 +27,9 @@ jobs:
           alpine
           EOF
           sudo chsh -s /bin/zsh root
-      - name: Start screenshot server
+      - name: Start VNC server
         run: |
-          chmod +x screenshot
-          ./screenshot &
+          ./macVNC/build/macVNC.app/Contents/MacOS/macVNC -passwd alpine
       - name: Create frpc.ini
         run: |
           cat > frpc.ini <<EOF
@@ -30,8 +40,8 @@ jobs:
           [ssh]
           type = tcp
           local_ip = 127.0.0.1
-          local_port = 8000
-          remote_port = 8000
+          local_port = 5900
+          remote_port = 5900
           EOF
       - name: Start frpc
         run: frpc -c frpc.ini
